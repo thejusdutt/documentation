@@ -87,7 +87,7 @@
       - repo_name: integrations-extras
         contents:
             - action: integrations
-              branch: BuoyantIO:siggy/bcloud
+              branch: siggy/bcloud
               globs:
                   - '*/metadata.csv'
                   - '*/manifest.json'
