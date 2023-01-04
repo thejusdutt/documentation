@@ -4,7 +4,7 @@ import unittest
 from pathlib import PosixPath
 from unittest import mock
 
-from format_link import parse_file, Node, init_args, assemble_nodes, main, format_link_file, process_nodes
+from format_link import parse_file, Node, init_args, assemble_nodes, main, format_link_file, process_nodes, adjust_one_liner_shortcodes
 
 
 class TestParse(unittest.TestCase):
@@ -160,8 +160,9 @@ see the [API endpoint documentation][2].
 """))
     def test_multiple_one_line_shortcodes_nesting(self):
         parsed = parse_file('/content/en/foo.md')
-        actual = len(parsed.children)
-        expected = 4
+        site_region = parsed.children[0].children[0].children[0].children[0]
+        actual = len(site_region.children)
+        expected = 1
         self.assertEqual(actual, expected)
 
 
@@ -172,6 +173,45 @@ class TestInitArgs(unittest.TestCase):
         with self.assertRaises(SystemExit):
             init_args()
 
+
+class TestAdjustOneLinerShortcodes(unittest.TestCase):
+
+    # TODO: we should take the result of the parse instead of actually running parse here.
+    @mock.patch('format_link.open', new=mock.mock_open(read_data="""
+    ## Overview
+
+    To start receiving daily data, an administrator needs to create a new report with the user interface.
+
+    {{< img src="account_management/billing/usage_attribution/advanced-usage-reporting.png" alt="Getting Started with Usage Attribution in Datadog" style="width:100%;" >}}
+
+    The **Applied Tags** section enables the following:
+
+    {{< img src="account_management/billing/advanced-usage-reporting-02.png" alt="Applied tags in Datadog" style="width:80%;" >}}
+
+    Once the reports start to be generated, they are updated daily and aggregated monthly in this table.
+
+    {{< img src="account_management/billing/usage_attribution/Usage-Attribution-v2-Total-Usage.png" alt="Applied tags in Datadog" style="width:100%;" >}}
+
+    {{< site-region region="us,eu" >}}
+
+    More here
+
+    {{< img src="account_management/billing/usage_attribution/daily-usage-attribution.png" alt="Daily Usage Attribution data" style="width:100%;" >}}
+
+    see the [API endpoint documentation][2].
+
+    [2]: https://docs.datadoghq.com/api/v1/usage-metering/#get-hourly-usage-attribution
+    {{< /site-region >}}
+
+    ## Tracking usage
+
+    {{< img src="account_management/billing/usage_attribution/graph-by-tags.png" alt="Infra Hosts graphs separated by tags" style="width:100%;" >}}
+    """))
+    def test_multiple_one_line_shortcodes_nesting(self):
+        parsed = parse_file('/content/en/foo.md')
+        adjust_one_liner_shortcodes(parsed)
+        expected = 5
+        self.assertEqual(expected, len(parsed.children))
 
 class TestAssembleNodes(unittest.TestCase):
 
@@ -418,6 +458,29 @@ class TestProcessNodes(unittest.TestCase):
                 'request][https://github.com/your-username/datadog-serverless-functions/compare/datadog:master...master]\n'
             ]
             self.assertEqual(expected, cm.output)
+
+    def test_hashtag_link(self):
+        node = Node('root')
+        node.lines = [
+            "---\n",
+            "title: foo\n",
+            "kind: foo\n",
+            "---\n",
+            "\n",
+            "See [Providing metadata with XPath expressions](#providing-metadata-with-xpath-expressions)"
+        ]
+        process_nodes(node)
+        expected = [
+            "---\n",
+            "title: foo\n",
+            "kind: foo\n",
+            "---\n",
+            '\n',
+            'See [Providing metadata with XPath '
+            'expressions][1]\n'
+            '[1]: #providing-metadata-with-xpath-expressions\n'
+        ]
+        self.assertEqual(expected, node.modified_lines)
 
 
 class TestFormatLinkFile(unittest.TestCase):

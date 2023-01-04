@@ -139,22 +139,39 @@ def parse_file(file):
             matches = re.finditer(closed_tag_regex, line, re.MULTILINE)
             for matchNum, match in enumerate(matches, start=1):
                 tag_name, current_node.char_end = match.group(1), match.end(0)
-                if tag_name == current_node.name and current_node.parent:
-                    current_node.is_closing_shortcode = True
+                # we need to go to each parent to match the closer
+                node_to_close = find_matching_closer(current_node, tag_name)
+                if node_to_close:
+                    node_to_close.char_end = current_node.char_end
+                    node_to_close.is_closing_shortcode = True
                     # if we closed on the same line we don't want to add the line again and end_line is the same
                     is_same_line = new_line_number == 0
-                    current_node.line_end = current_node.line_start if is_same_line else current_node.line_start + 1
-                    new_line_number = current_node.line_end
-                    current_node = current_node.parent
+                    node_to_close.line_end = node_to_close.line_start if is_same_line else node_to_close.line_start + 1
+                    new_line_number = node_to_close.line_end
+                    current_node = node_to_close.parent
                     if not is_same_line:
                         current_node.push_line(line)
+                else:
+                    logger.warning(f'Failed to find closing tag {tag_name} (Skipping Format):\n\t{line}')
+                    raise SystemExit(0)
 
             new_line_number += 1
 
     if not root.lines:
-        raise ValueError
+        logger.warning(f'Parsing file returned empty content (Skipping Format)')
+        raise SystemExit(0)
 
     return root
+
+
+def find_matching_closer(node, tag_name):
+    out = None
+    if node:
+        if tag_name == node.name and node.parent:
+            out = node
+        else:
+            out = find_matching_closer(node.parent, tag_name)
+    return out
 
 
 def adjust_one_liner_shortcodes(node):
@@ -210,7 +227,7 @@ def process_nodes(node):
             # alert on duplicate reference numbers
             if ref_num in ref_nums:
                 logger.warning(f'{node} has duplicated reference index numbers (Skipping Format):\n\t[{ref_num}]: {ref_link}\n\t[{ref_num}]: {refs[ref_num]}')
-                raise SystemExit
+                raise SystemExit(0)
             else:
                 refs[ref_num] = ref_link
                 ref_nums.append(ref_num)
