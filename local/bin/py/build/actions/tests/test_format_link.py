@@ -128,6 +128,42 @@ Hello world 2
     def test_special_chars(self):
         pass
 
+    @mock.patch('format_link.open', new=mock.mock_open(read_data="""
+## Overview
+
+To start receiving daily data, an administrator needs to create a new report with the user interface.
+
+{{< img src="account_management/billing/usage_attribution/advanced-usage-reporting.png" alt="Getting Started with Usage Attribution in Datadog" style="width:100%;" >}}
+
+The **Applied Tags** section enables the following:
+
+{{< img src="account_management/billing/advanced-usage-reporting-02.png" alt="Applied tags in Datadog" style="width:80%;" >}}
+
+Once the reports start to be generated, they are updated daily and aggregated monthly in this table.
+
+{{< img src="account_management/billing/usage_attribution/Usage-Attribution-v2-Total-Usage.png" alt="Applied tags in Datadog" style="width:100%;" >}}
+
+{{< site-region region="us,eu" >}}
+
+More here
+
+{{< img src="account_management/billing/usage_attribution/daily-usage-attribution.png" alt="Daily Usage Attribution data" style="width:100%;" >}}
+
+see the [API endpoint documentation][2].
+
+[2]: https://docs.datadoghq.com/api/v1/usage-metering/#get-hourly-usage-attribution
+{{< /site-region >}}
+
+## Tracking usage
+
+{{< img src="account_management/billing/usage_attribution/graph-by-tags.png" alt="Infra Hosts graphs separated by tags" style="width:100%;" >}}
+"""))
+    def test_multiple_one_line_shortcodes_nesting(self):
+        parsed = parse_file('/content/en/foo.md')
+        actual = len(parsed.children)
+        expected = 4
+        self.assertEqual(actual, expected)
+
 
 class TestInitArgs(unittest.TestCase):
 
@@ -368,6 +404,20 @@ class TestProcessNodes(unittest.TestCase):
             '[1]: https://github.com/DataDog/datadog-agent/blob/master/docs/agent/hostname_force_config_as_canonical.md\n'
         ]
         self.assertEqual(expected, node.modified_lines)
+
+    # we should make the code understand single quote code blocks and ignore `\b[4|5][0-9][0-9]\b`
+    def test_square_bracket_values_in_text(self):
+        node = Node('root')
+        node.lines = ['\n', '## Foo\n', '\n', '1. Push to your fork and [submit a pull request][https://github.com/your-username/datadog-serverless-functions/compare/datadog:master...master]\n', '\n', 'Some examples of regular expressions that can be used for log filtering:\n', '\n', '- Include (or exclude) Lambda platform logs: `"(START|END) RequestId:\\s`. Note: The preceding `"` is needed to match the start of the log message, which is in a json blob (`{"message": "START RequestId...."}`). Datadog recommends keeping the `REPORT` logs, as they are used to populate the invocations list in the serverless function views.\n', '- Include CloudTrail error messages only: `errorMessage`\n', '- Include only logs containing an HTTP 4XX or 5XX error code: `\x08[4|5][0-9][0-9]\x08`\n', '- Include only CloudWatch logs where the `message` field contains a specific JSON key/value pair: `\\"awsRegion\\":\\"us-east-1\\"`\n', '  - The message field of a CloudWatch log event is encoded as a string. `{"awsRegion": "us-east-1"}` is encoded as `{"awsRegion":"us-east-1"}`.\n', '    The pattern you provide must therefore include extra `\\` escape characters.\n', '\n']
+        with self.assertLogs('format_link', level='INFO') as cm:
+            process_nodes(node)
+            expected = [
+                "WARNING:format_link:'<root>' has no footer links but references "
+                'them:\n'
+                '\t[submit a pull '
+                'request][https://github.com/your-username/datadog-serverless-functions/compare/datadog:master...master]\n'
+            ]
+            self.assertEqual(expected, cm.output)
 
 
 class TestFormatLinkFile(unittest.TestCase):
