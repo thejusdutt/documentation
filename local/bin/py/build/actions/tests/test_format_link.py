@@ -194,6 +194,29 @@ see the [API endpoint documentation][2].
         expected = 1
         self.assertEqual(actual, expected)
 
+    @mock.patch('format_link.open', new=mock.mock_open(read_data="""
+### Dynamic links
+
+Use template variables to dynamically link to a related resource for your investigation.
+
+For example, if a signal detects a suspicious user login, use `{{@user.id}}` to create a dynamic link to another resource:
+
+```
+* [Investigate user in the authentication dashboard](https://app.datadoghq.com/example/integration/security-monitoring---authentication-events?tpl_var_username={{@usr.id}})
+```
+
+Or, if a signal is tagged with a specific service, use the `{{@service}}` variable to create a dynamic link:
+
+```
+* [Investigate service in the services dashboard](https://app.datadoghq.com/example/integration/application-security---service-events?tpl_var_service={{@service}})
+```
+"""))
+    def test_multiline_triple_back_tick_with_links_ignored(self):
+        actual = parse_file('/content/en/foo.md')
+        self.assertEqual(len(actual.children), 2)
+        self.assertEqual(actual.children[0].ignore, True)
+        self.assertEqual(actual.children[1].ignore, True)
+
 
 class TestInitArgs(unittest.TestCase):
 
@@ -511,21 +534,32 @@ class TestProcessNodes(unittest.TestCase):
         ]
         self.assertEqual(expected, node.modified_lines)
 
-    def test_multiline_triple_back_tick_with_links(self):
-        node = Node('root')
-        node.lines = ['\n', '### Dynamic links\n', '\n',
+    def test_ignored_blocks_do_not_process(self):
+        root = Node('root')
+        c1 = Node('```')
+        c1.ignore = True
+        c1.is_closing_shortcode = True
+        c1.line_start = 7
+        c1.line_end = 8
+        c1.lines = ['```\n', '* [Investigate user in the authentication dashboard](https://app.datadoghq.com/example/integration/security-monitoring---authentication-events?tpl_var_username={{@usr.id}})\n', '```\n']
+        c1.parent = root
+        c2 = Node('```')
+        c2.ignore = True
+        c2.is_closing_shortcode = True
+        c2.line_start = 12
+        c2.line_end = 13
+        c2.lines = ['```\n', '* [Investigate service in the services dashboard](https://app.datadoghq.com/example/integration/application-security---service-events?tpl_var_service={{@service}})\n', '```\n']
+        c2.parent = root
+        root.children = [c1, c2]
+        root.lines = ['\n', '### Dynamic links\n', '\n',
                       'Use template variables to dynamically link to a related resource for your investigation.\n',
                       '\n',
                       'For example, if a signal detects a suspicious user login, use `{{@user.id}}` to create a dynamic link to another resource:\n',
-                      '\n', '```\n',
-                      '* [Investigate user in the authentication dashboard](https://app.datadoghq.com/example/integration/security-monitoring---authentication-events?tpl_var_username={{@usr.id}})\n',
-                      '```\n', '\n',
+                      '\n', '```\n', '```\n', '\n',
                       'Or, if a signal is tagged with a specific service, use the `{{@service}}` variable to create a dynamic link:\n',
-                      '\n', '```\n',
-                      '* [Investigate service in the services dashboard](https://app.datadoghq.com/example/integration/application-security---service-events?tpl_var_service={{@service}})\n',
-                      '```\n']
-        process_nodes(node)
-        self.assertNotIn("[Investigate user in the authentication dashboard][1]", ''.join(node.modified_lines))
+                      '\n', '```\n', '```\n']
+        process_nodes(root)
+        self.assertNotIn("[Investigate user in the authentication dashboard][1]", ''.join(root.modified_lines))
 
 
 class TestFormatLinkFile(unittest.TestCase):

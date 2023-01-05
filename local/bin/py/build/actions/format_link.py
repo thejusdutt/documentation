@@ -111,6 +111,14 @@ def parse_file(file):
                 current_node.char_start = 0
                 new_node = Node("```", True)
 
+                # if we entered a new node lets set it as the current
+                if new_node:
+                    current_node.add(new_node)
+                    current_node = new_node
+                    current_node.push_line(line)
+                    current_node.line_start = new_line_number
+                    new_line_number = 0
+
             # find new open shortcode tags and create a node
             if not current_node.ignore:
                 matches = re.finditer(open_tag_regex, line, re.MULTILINE)
