@@ -36,7 +36,7 @@ logger.addHandler(stream_handler)
 
 # log only debug messages to file in ci
 if os.getenv("CI_COMMIT_REF_NAME"):
-    file_handler = logging.FileHandler('format_link.debug.log')
+    file_handler = logging.FileHandler(os.path.join(os.getenv("CI_PROJECT_DIR", ''), 'format_link.debug.log'))
     file_handler.setLevel(logging.DEBUG)
     file_handler.addFilter(lambda record: record.levelno == logging.DEBUG)
     logger.addHandler(file_handler)
