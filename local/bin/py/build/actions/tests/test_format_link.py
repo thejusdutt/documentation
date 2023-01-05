@@ -31,17 +31,46 @@ class TestParse(unittest.TestCase):
 
     @mock.patch('format_link.open', new=mock.mock_open(
         read_data='{{< programming-lang-wrapper langs="java,dotnet,go,ruby,php,nodejs,python" >}}{{< programming-lang lang="java" >}}{{< /programming-lang >}}{{< /programming-lang-wrapper >}}'))
-    def test_lang_shortcode(self):
+    def test_lang_shortcode_oneline(self):
         actual = parse_file('/content/en/foo.md')
-        expected = Node("root")
-        self.assertEqual(actual, expected)
+        self.assertEqual(len(actual.children), 1)
+        self.assertEqual(actual.children[0].name, 'programming-lang-wrapper')
+        self.assertEqual(len(actual.children[0].children), 1)
+        self.assertEqual(actual.children[0].children[0].name, 'programming-lang')
+        self.assertEqual(len(actual.children[0].children[0].children), 0)
+
+    @mock.patch('format_link.open', new=mock.mock_open(
+            read_data="""
+Root text
+{{< programming-lang-wrapper langs="java,dotnet,go,ruby,php,nodejs,python" >}}
+{{< programming-lang lang="java" >}}
+Java text
+{{< /programming-lang >}}
+{{< /programming-lang-wrapper >}}
+Text after
+    """))
+    def test_lang_shortcode_multiline(self):
+        actual = parse_file('/content/en/foo.md')
+        self.assertEqual(len(actual.children), 1)
+        self.assertEqual(actual.children[0].name, 'programming-lang-wrapper')
+        self.assertEqual(len(actual.children[0].children), 1)
+        self.assertEqual(actual.children[0].children[0].name, 'programming-lang')
+        self.assertEqual(len(actual.children[0].children[0].children), 0)
+
 
     @mock.patch('format_link.open', new=mock.mock_open(
         read_data='{{< programming-lang-wrapper langs="java,dotnet,go,ruby,php,nodejs,python" >}}{{< programming-lang lang="java" >}}{{< tabs >}}{{% tab "set_tag" %}}{{% /tab %}}{{< /tabs >}}{{< /programming-lang >}}{{< /programming-lang-wrapper >}}'))
-    def test_lang_tab_shortcode(self):
+    def test_lang_tab_shortcode_oneline(self):
         actual = parse_file('/content/en/foo.md')
-        expected = Node("root")
-        self.assertEqual(actual, expected)
+        self.assertEqual(len(actual.children), 1)
+        self.assertEqual(actual.children[0].name, 'programming-lang-wrapper')
+        self.assertEqual(len(actual.children[0].children), 1)
+        self.assertEqual(actual.children[0].children[0].name, 'programming-lang')
+        self.assertEqual(len(actual.children[0].children[0].children), 1)
+        self.assertEqual(actual.children[0].children[0].children[0].name, 'tabs')
+        self.assertEqual(len(actual.children[0].children[0].children[0].children), 1)
+        self.assertEqual(actual.children[0].children[0].children[0].children[0].name, 'tab')
+        self.assertEqual(len(actual.children[0].children[0].children[0].children[0].children), 0)
 
     @mock.patch('format_link.open', new=mock.mock_open(
         read_data="""

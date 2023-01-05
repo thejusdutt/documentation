@@ -93,8 +93,8 @@ def parse_file(file):
     root = Node("root")
     current_node = root
 
-    open_tag_regex = r"{{[<|%]\s+([A-Za-z0-9-_]+)(.*)\s*[%|>]}}"
-    closed_tag_regex = r"{{[<|%]\s+/([A-Za-z0-9-_]+)(.*)\s*[%|>]}}"
+    open_tag_regex = r"{{[<|%]\s+([A-Za-z0-9-_]+)(.*?)\s*[%|>]}}"
+    closed_tag_regex = r"{{[<|%]\s+/([A-Za-z0-9-_]+)(.*?)\s*[%|>]}}"
     ignore_shortcodes = ('code-block', )
 
     with open(file, 'r', encoding='utf-8') as f:
@@ -118,13 +118,13 @@ def parse_file(file):
                     tag_name, current_node.char_start, current_node.char_end = match.group(1), match.start(0), match.end()
                     new_node = Node(tag_name, tag_name in ignore_shortcodes)
 
-            # if we entered a new node lets set it as the current
-            if new_node:
-                current_node.add(new_node)
-                current_node = new_node
-                current_node.push_line(line)
-                current_node.line_start = new_line_number
-                new_line_number = 0
+                    # if we entered a new node lets set it as the current
+                    if new_node:
+                        current_node.add(new_node)
+                        current_node = new_node
+                        current_node.push_line(line)
+                        current_node.line_start = new_line_number
+                        new_line_number = 0
 
             # is this a closing triple backtick code block
             if current_node.name == "```" and tickmatches and not new_node:
@@ -137,15 +137,18 @@ def parse_file(file):
 
             # check for closing node and return up the chain to the parent node for next iteration
             matches = re.finditer(closed_tag_regex, line, re.MULTILINE)
+            is_same_line = new_line_number == 0
             for matchNum, match in enumerate(matches, start=1):
                 tag_name, current_node.char_end = match.group(1), match.end(0)
-                # we need to go to each parent to match the closer
-                node_to_close = find_matching_closer(current_node, tag_name)
+                if is_same_line and tag_name == current_node.name:
+                    node_to_close = current_node
+                else:
+                    # we need to go to each parent to match the closer
+                    node_to_close = find_matching_closer(current_node, tag_name)
                 if node_to_close:
                     node_to_close.char_end = current_node.char_end
                     node_to_close.is_closing_shortcode = True
                     # if we closed on the same line we don't want to add the line again and end_line is the same
-                    is_same_line = new_line_number == 0
                     node_to_close.line_end = node_to_close.line_start if is_same_line else node_to_close.line_start + 1
                     new_line_number = node_to_close.line_end
                     current_node = node_to_close.parent
