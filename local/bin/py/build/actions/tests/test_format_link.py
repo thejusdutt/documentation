@@ -511,6 +511,22 @@ class TestProcessNodes(unittest.TestCase):
         ]
         self.assertEqual(expected, node.modified_lines)
 
+    def test_multiline_triple_back_tick_with_links(self):
+        node = Node('root')
+        node.lines = ['\n', '### Dynamic links\n', '\n',
+                      'Use template variables to dynamically link to a related resource for your investigation.\n',
+                      '\n',
+                      'For example, if a signal detects a suspicious user login, use `{{@user.id}}` to create a dynamic link to another resource:\n',
+                      '\n', '```\n',
+                      '* [Investigate user in the authentication dashboard](https://app.datadoghq.com/example/integration/security-monitoring---authentication-events?tpl_var_username={{@usr.id}})\n',
+                      '```\n', '\n',
+                      'Or, if a signal is tagged with a specific service, use the `{{@service}}` variable to create a dynamic link:\n',
+                      '\n', '```\n',
+                      '* [Investigate service in the services dashboard](https://app.datadoghq.com/example/integration/application-security---service-events?tpl_var_service={{@service}})\n',
+                      '```\n']
+        process_nodes(node)
+        self.assertNotIn("[Investigate user in the authentication dashboard][1]", ''.join(node.modified_lines))
+
 
 class TestFormatLinkFile(unittest.TestCase):
 
