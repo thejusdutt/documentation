@@ -14,7 +14,7 @@
   {{ if eq $.Site.Params.environment "development" }}
     {{ warnf "Agent Config shortcode error: given 'type' param was not found in Agent config template.  Check agent_config_types_list.txt for list of available configuration types." }}
   {{ else }}
-    {{ errorf "Agent Config shortcode error: given 'type' param was not found in Agent config template.  Check agent_config_types_list.txt for list of available configuration types." }}
+    {{ errorf "Agent Config shortcode error: given 'type' param was not found in Agent config template. Usage: %q, Check agent_config_types_list.txt for list of available configuration types." .Page.File.Path }}
   {{ end }}
 {{ end }}
 
