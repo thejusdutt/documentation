@@ -153,10 +153,6 @@ Hello world 2
         expected = 5
         self.assertEqual(actual, expected)
 
-    @mock.patch('format_link.open', new=mock.mock_open(read_data="""`@notification`"""))
-    def test_special_chars(self):
-        pass
-
     @mock.patch('format_link.open', new=mock.mock_open(read_data="""
 ## Overview
 
@@ -560,6 +556,15 @@ class TestProcessNodes(unittest.TestCase):
                       '\n', '```\n', '```\n']
         process_nodes(root)
         self.assertNotIn("[Investigate user in the authentication dashboard][1]", ''.join(root.modified_lines))
+
+    def test_special_chars(self):
+        """ we should be able to parse `@notification` """
+        root = Node('root')
+        root.lines = ['`\x1d@notification`\x1c']
+        process_nodes(root)
+        actual = ''.join(root.modified_lines)
+        expected = "`@notification`"
+        self.assertEqual(actual, expected)
 
 
 class TestFormatLinkFile(unittest.TestCase):
