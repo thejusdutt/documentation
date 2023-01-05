@@ -566,6 +566,20 @@ class TestProcessNodes(unittest.TestCase):
         expected = "`@notification`"
         self.assertEqual(actual, expected)
 
+    def test_footlink_with_parenthesis_unchanged(self):
+        """[1]: http://en.wikipedia.org/wiki/Norm_(mathematics)"""
+        node = Node('root')
+        node.lines = [
+            'See [here][1]'
+            '\n',
+            '[1]: http://en.wikipedia.org/wiki/Norm_(mathematics)',
+            '\n'
+        ]
+        process_nodes(node)
+        actual = ''.join(node.modified_lines)
+        expected = ''.join(node.lines)
+        self.assertEqual(actual, expected)
+
 
 class TestFormatLinkFile(unittest.TestCase):
 
