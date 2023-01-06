@@ -168,10 +168,6 @@ def parse_file(file):
 
             new_line_number += 1
 
-    if not root.lines:
-        logger.warning(f'Parsing file returned empty content (Skipping Format)')
-        raise SystemExit(0)
-
     return root
 
 
@@ -391,6 +387,11 @@ def format_link_file(*args):
     # reassemble the file with the changes we have made
     contents_list = assemble_nodes(root)
     reassembled_file = ''.join(contents_list)
+
+    if not root.lines:
+        logger.warning(f'Parsing file returned empty content (Skipping Format)')
+        return ''.join(root.lines)
+
     return reassembled_file
 
 
