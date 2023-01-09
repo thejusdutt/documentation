@@ -21,8 +21,17 @@ class Formatter(logging.Formatter):
             logging.FATAL: 31,
             logging.DEBUG: 36
         }.get(record.levelno, 0)
-        self._style._fmt = f"\x1b[{color}m%(levelname)s:{reset} %(message)s"
+        self._style._fmt = f"\x1b[{color}m%(levelname)s:{reset} [%(file_processing)s] %(message)s"
         return super().format(record)
+
+
+current_file_processing = ""
+
+
+class ContextFilter(logging.Filter):
+    def filter(self, record):
+        record.file_processing = current_file_processing
+        return True
 
 
 logger = logging.getLogger(__name__)
@@ -33,6 +42,9 @@ stream_handler = logging.StreamHandler(stream=sys.stdout)
 stream_handler.setFormatter(Formatter())
 stream_handler.setLevel(logging.INFO)
 logger.addHandler(stream_handler)
+
+f = ContextFilter()
+logger.addFilter(f)
 
 # log only debug messages to file in ci
 if os.getenv("CI_COMMIT_REF_NAME"):
@@ -400,6 +412,7 @@ def main():
     Entry point taking args and processing directory of files or file
     and responsible for writing the new contents back out to filesystem
     """
+    global current_file_processing
     options = init_args()
     if options.source:
         source_path = Path(options.source)
@@ -407,7 +420,8 @@ def main():
         if not list(files):
             logger.warning('No files found to process')
         for filepath in files:
-            logger.info(f'Formating file {filepath}')
+            current_file_processing = filepath
+            logger.info(f'Formating file')
             final_text = format_link_file(filepath)
             # overwrite the original file with our changes
             with open(filepath, 'w') as final_file:
