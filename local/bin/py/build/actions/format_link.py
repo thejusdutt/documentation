@@ -387,9 +387,13 @@ def format_link_file(*args):
     @param args: filepath, (we don't care about other args passed from legacy scripts)
     @return: string of changed file
     """
+    global current_file_processing
     if len(args) == 0:
         raise ValueError("Filepath is required argument")
     filepath = args[0]
+    # set global for logger
+    current_file_processing = filepath
+    logger.info(f'Formating file')
     # parse the file shortcode hierarchy
     root = parse_file(filepath)
     # any node that is false still is a one liner
@@ -412,7 +416,6 @@ def main():
     Entry point taking args and processing directory of files or file
     and responsible for writing the new contents back out to filesystem
     """
-    global current_file_processing
     options = init_args()
     if options.source:
         source_path = Path(options.source)
@@ -420,8 +423,6 @@ def main():
         if not list(files):
             logger.warning('No files found to process')
         for filepath in files:
-            current_file_processing = filepath
-            logger.info(f'Formating file')
             final_text = format_link_file(filepath)
             # overwrite the original file with our changes
             with open(filepath, 'w') as final_file:
